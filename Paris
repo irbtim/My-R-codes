@@ -1,0 +1,34 @@
+This is not my code
+library(rgdal)
+library(spatstat)
+library(maptools)
+library(raster)
+ 
+f <- readOGR("IN_NYC/sample_nyc.shp", "sample_nyc")
+ 
+# CREATE SEGMENTS
+segmts <- as.psp(as(f, "SpatialLines")) # coercing SpatialLines objects to psp Line Segment Pattern objects splits polylines to lines
+ 
+# ORIENTATION
+ang <- angles.psp(segmts) # by default, angles are not oriented in the function
+ang <- ifelse(ang > pi/2, ang-(pi/2), ang) # orthogonal lines are given the same orientation
+ang.sin <- sin(ang) # to get values between 0 and 1
+  
+# VECTOR
+spLs.df <- SpatialLinesDataFrame(as(segmts, "SpatialLines"), 
+                                   data=as.data.frame(ang))
+writeOGR(spLs.df, "OUT_NYC/roads_angle.shp", "roads_angle", "ESRI Shapefile") # export
+ 
+# MIDS : points used for interpolation
+mids <- midpoints.psp(segmts) # get the mid point of each segment
+marks(mids) <- ang.sin # affect the orientation to them
+ 
+# INTERPOLATION
+res <- 25 # here is the resolution we want
+spatstat.options(npixel=c((round((mids$window$xrange[2] - mids$window$xrange[1]) / res)),
+                          (round((mids$window$yrange[2] - mids$window$yrange[1]) / res)))) # set the spatstat options to get the wanted resolution
+interp <- raster(idw(mids)) # interpolation of the mid points
+ 
+# SMOOTHING
+mn <- focal(interp, w=3, fun=mean) # we apply a focal window to the data that will smooth the result.
+writeRaster(mn, "OUT_NYC/mn.tif", overwrite=TRUE)
