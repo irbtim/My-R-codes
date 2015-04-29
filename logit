@@ -1,0 +1,32 @@
+library("dplyr")
+library("erer")
+library("vcd")
+library("ggplot2")
+library("reshape2")
+library("AUC")
+library(maxLik)
+t<-read.csv("titanic3.csv")
+d <-  dplyr::select(t, age, sibsp,sex, fare, parch, survived)
+na.omit(d)
+m_logit<-glm(data=d, survived~age+I(age^2)+sex+fare+I(fare^2)+sibsp,
+             family=binomial(link="logit"), x=TRUE)
+
+m_logit2<-glm(data=d, survived~age+I(age^2)+sex+sibsp,
+              family=binomial(link="logit"), x=TRUE)
+lrtest(m_logit, m_logit2)
+
+maBina(m_logit)
+summary(m_logit)
+coeftest(m_logit)
+confint(m_logit)
+nd<-data.frame(age=50, sex="male", sibsp=2, fare=200)
+head(newdata)
+pr_logit<-predict(m_logit, newdata, se=TRUE)
+pr_logit <- predict(m_logit, newdata=nd, type="response", se.fit=TRUE)
+newdata_pr<-cbind(newdata, pr_logit)
+round(pr_logit$fit-1.96*pr_logit$se.fit, digits = 2)
+pr_logit$fit
+head(newdata_pr)
+confint(newdata_pr)
+vcov(newdata_pr)
+pr<-predict(m_logit, newdata=nd )
